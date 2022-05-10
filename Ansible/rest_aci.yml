@@ -1,0 +1,97 @@
+---
+- hosts: apic1
+  gather_facts: no
+
+  tasks:
+
+  - name: Query Faults
+    cisco.aci.aci_rest:
+      host: apic1
+      username: admin
+      password: C1sco12345
+      validate_certs: no
+      path: api/node/class/faultSummary.json
+      method: get
+    
+    delegate_to: localhost
+    register: faults_records
+
+  - local_action:
+      module: copy
+      content: "{{ faults_records }}"
+      dest: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/faults.json
+  
+  - name: Run a python script to transorm json to csv file
+    script: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/json_to_csv_faults.py
+    args:
+      executable: python3
+    delegate_to: localhost  
+
+  - name: Query Events
+    cisco.aci.aci_rest:
+        host: apic1
+        method: get
+        username: admin
+        password: C1sco12345
+        validate_certs: no
+        path: api/node/class/eventRecord.json?query-target-filter=not(wcard(eventRecord.dn,"__ui_"))&order-by=eventRecord.created|asc&page=0&page-size=50
+
+    delegate_to: localhost
+    register: events_records
+
+  - local_action:
+      module: copy 
+      content: "{{ events_records }}"
+      dest: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/events.json
+  
+  - name: Run a python script to transorm json to csv file
+    script: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/json_to_csv_events.py
+    args:
+      executable: python3
+    delegate_to: localhost  
+    
+  - name: Query fabricOverallHealth
+    cisco.aci.aci_rest:
+        host: apic1
+        username: admin
+        password: C1sco12345
+        validate_certs: no
+        path: api/node/mo/topology/HDfabricOverallHealth5min-0.json
+        method: get
+        
+    delegate_to: localhost
+    register: fabricOverall_Health
+
+  - local_action:
+      module: copy
+      content: "{{ fabricOverall_Health }}"
+      dest: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/foH.json
+  
+  - name: Run a python script to transorm json to csv file
+    script: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/json_to_csv_foH.py
+    args:
+      executable: python3
+    delegate_to: localhost
+
+  - name: Query Tenant Faults
+    cisco.aci.aci_rest:
+      host: apic1
+      username: admin
+      password: C1sco12345
+      validate_certs: no
+      path: api/node/mo/uni/tn-ATX_MBP_Ansible_Terraform.json?rsp-subtree-include=fault-records,no-scoped,subtree&subscription=no&order-by=faultRecord.created|desc&page=0&page-size=100&_dc=1627583582883
+      method: get
+    
+    delegate_to: localhost
+    register: tenant_faults_records
+
+  - local_action:
+      module: copy
+      content: "{{ tenant_faults_records }}"
+      dest: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/tenant_faults.json
+  
+  - name: Run a python script to transorm json to csv file
+    script: /home/cisco/Desktop/MBP_ACIWithAnsibleAndTerraform/Ansible/json_to_csv_tenant_faults.py
+    args:
+      executable: python3
+    delegate_to: localhost  
